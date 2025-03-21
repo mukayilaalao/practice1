@@ -1,0 +1,9 @@
+DROP DATABASE IF EXISTS practice1;
+CREATE DATABASE practice1;
+\c practice1;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+);

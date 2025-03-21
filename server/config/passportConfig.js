@@ -1,31 +1,38 @@
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
 const bcrypt = require("bcryptjs");
-
-// Sample user database (Replace with a real database)
-const users = [
-  { id: 1, username: "test", password: bcrypt.hashSync("password", 10) },
-];
+const pool = require("./db");
 
 passport.use(
-  new LocalStrategy((username, password, done) => {
-    const user = users.find((user) => user.username === username);
-    if (!user) return done(null, false, { message: "User not found" });
+  new LocalStrategy(async (username, password, done) => {
+    try {
+      const result = await pool.query(
+        "SELECT * FROM users WHERE username = $1",
+        [username]
+      );
+      if (result.rows.length === 0)
+        return done(null, false, { message: "User not found" });
 
-    // Compare hashed passwords
-    if (!bcrypt.compareSync(password, user.password)) {
-      return done(null, false, { message: "Incorrect password" });
+      const user = result.rows[0];
+      const isMatch = bcrypt.compareSync(password, user.password);
+      if (!isMatch) return done(null, false, { message: "Incorrect password" });
+
+      return done(null, user);
+    } catch (err) {
+      return done(err);
     }
-
-    return done(null, user);
   })
 );
 
 // Serialize & Deserialize user for session
 passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser((id, done) => {
-  const user = users.find((user) => user.id === id);
-  done(null, user);
+passport.deserializeUser(async (id, done) => {
+  try {
+    const result = await pool.query("SELECT * FROM users WHERE id = $1", [id]);
+    done(null, result.rows[0]);
+  } catch (err) {
+    done(err);
+  }
 });
 
 module.exports = passport;
